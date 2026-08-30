@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CardioGuard ML - Heart Disease Prediction System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        medical: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            700: '#0f766e',
+                            800: '#115e59',
+                            900: '#134e4a',
+                        },
+                        cardio: {
+                            danger: '#ef4444',
+                            warning: '#f59e0b',
+                            safe: '#10b981',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF for Report Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        code, pre { font-family: 'JetBrains Mono', monospace; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="h-full flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden custom-scrollbar">
+
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-rose-950/50">
+                        <i class="fa-solid fa-heart-pulse text-white text-xl animate-pulse"></i>
+                    </div>
+                    <div>
+                        <span class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-rose-400 bg-clip-text text-transparent">CardioGuard ML</span>
+                        <span class="block text-xs text-teal-400 font-medium">Heart Disease Clinical AI System</span>
+                    </div>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <nav class="hidden md:flex space-x-1" id="desktop-nav">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-white bg-slate-800 border border-slate-700">
+                        <i class="fa-solid fa-chart-line mr-1.5 text-teal-400"></i> Dashboard
+                    </button>
+                    <button onclick="switchTab('predict')" id="nav-predict" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white hover:bg-slate-800/60">
+                        <i class="fa-solid fa-stethoscope mr-1.5 text-rose-400"></i> Patient Predictor
+                    </button>
+                    <button onclick="switchTab('models')" id="nav-models" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white hover:bg-slate-800/60">
+                        <i class="fa-solid fa-brain mr-1.5 text-indigo-400"></i> ML Training Hub
+                    </button>
+                    <button onclick="switchTab('records')" id="nav-records" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white hover:bg-slate-800/60">
+                        <i class="fa-solid fa-folder-open mr-1.5 text-amber-400"></i> Patient Records
+                    </button>
+                    <button onclick="switchTab('code')" id="nav-code" class="px-3 py-2 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white hover:bg-slate-800/60">
+                        <i class="fa-solid fa-code mr-1.5 text-emerald-400"></i> Python Source Code
+                    </button>
+                </nav>
+
+                <!-- User Profile / Auth Status -->
+                <div class="flex items-center space-x-3">
+                    <div id="user-badge" class="flex items-center space-x-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-full">
+                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+                        <span id="active-user-name" class="text-xs font-semibold text-slate-200">Dr. Sarah Jenkins</span>
+                        <span id="active-user-role" class="text-[10px] bg-indigo-900/80 text-indigo-300 px-2 py-0.5 rounded-full uppercase border border-indigo-700">Admin</span>
+                    </div>
+                    <button onclick="toggleAuthModal()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700" title="Switch User / Relogin">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Nav Ribbon -->
+        <div class="md:hidden flex overflow-x-auto border-t border-slate-800 p-2 space-x-2 custom-scrollbar bg-slate-900/90">
+            <button onclick="switchTab('dashboard')" class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap bg-slate-800 text-white">Dashboard</button>
+            <button onclick="switchTab('predict')" class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800">Predictor</button>
+            <button onclick="switchTab('models')" class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800">ML Models</button>
+            <button onclick="switchTab('records')" class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800">Records</button>
+            <button onclick="switchTab('code')" class="px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap text-slate-300 hover:bg-slate-800">Python Code</button>
+        </div>
+    </header>
+
+    <!-- Toast Notification Overlay -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- TAB 1: DASHBOARD -->
+        <section id="tab-dashboard" class="space-y-6">
+            <!-- Welcome Banner -->
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-xl">
+                <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div>
+                        <div class="inline-flex items-center space-x-2 px-2.5 py-1 rounded-md bg-teal-500/10 text-teal-400 border border-teal-500/20 text-xs font-medium mb-3">
+                            <i class="fa-solid fa-microchip"></i>
+                            <span>Scikit-Learn ML Model Active: <strong id="active-model-title" class="text-white">Random Forest Classifier</strong></span>
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Clinical Heart Disease Intelligence Console</h1>
+                        <p class="text-slate-400 text-sm mt-1 max-w-2xl">
+                            Real-time diagnostic support leveraging trained ensemble algorithms on 14 clinical cardiovascular attributes (UCI Cleveland Dataset standard).
+                        </p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="switchTab('predict')" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-semibold text-sm shadow-lg shadow-rose-900/40 flex items-center space-x-2 transition-all transform hover:-translate-y-0.5">
+                            <i class="fa-solid fa-plus-circle"></i>
+                            <span>New Clinical Entry</span>
+                        </button>
+                        <button onclick="switchTab('models')" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm border border-slate-700 flex items-center space-x-2 transition-all">
+                            <i class="fa-solid fa-sliders"></i>
+                            <span>Train Models</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metric Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Patients Evaluated</span>
+                        <div class="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                            <i class="fa-solid fa-hospital-user"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span id="stat-total-patients" class="text-3xl font-bold text-white">303</span>
+                        <span class="text-xs text-emerald-400 font-medium"><i class="fa-solid fa-arrow-up"></i> +12 this week</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div class="bg-indigo-500 h-full rounded-full" style="width: 85%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">High Risk Detected</span>
+                        <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span id="stat-high-risk" class="text-3xl font-bold text-rose-400">138</span>
+                        <span id="stat-high-risk-pct" class="text-xs text-rose-400 font-medium">45.5% of total</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div class="bg-rose-500 h-full rounded-full" style="width: 45.5%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Active Model Accuracy</span>
+                        <div class="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center border border-teal-500/20">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span id="stat-accuracy" class="text-3xl font-bold text-teal-400">88.5%</span>
+                        <span class="text-xs text-teal-400 font-medium">F1: 0.89</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                        <div class="bg-teal-500 h-full rounded-full" style="width: 88.5%"></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Database Status</span>
+                        <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                    </div>
+                    <div class="mt-3 flex items-baseline justify-between">
+                        <span class="text-3xl font-bold text-white">SQLite 3</span>
+                        <span class="text-xs text-emerald-400 font-medium"><i class="fa-solid fa-circle text-[8px] mr-1"></i> Connected</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-3">Syncing with `heart_disease.db`</p>
+                </div>
+            </div>
+
+            <!-- Dashboard Analytics Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Risk Distribution Doughnut Chart -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Risk Classification Breakdown</h3>
+                        <i class="fa-solid fa-pie-chart text-slate-500"></i>
+                    </div>
+                    <div class="h-60 relative flex items-center justify-center">
+                        <canvas id="chart-risk-pie"></canvas>
+                    </div>
+                </div>
+
+                <!-- Age vs Heart Disease Bar Chart -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 lg:col-span-2">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-white uppercase tracking-wider">Heart Disease Incidence by Age Cohort</h3>
+                        <i class="fa-solid fa-chart-column text-slate-500"></i>
+                    </div>
+                    <div class="h-60 relative">
+                        <canvas id="chart-age-risk"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Patient Records Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <div>
+                        <h3 class="text-base font-bold text-white">Recent Clinical Diagnoses</h3>
+                        <p class="text-xs text-slate-400">Latest patient risk predictions saved in database</p>
+                    </div>
+                    <button onclick="switchTab('records')" class="text-xs text-teal-400 hover:text-teal-300 font-semibold flex items-center space-x-1">
+                        <span>View All Patient Records</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800/80 text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-700">
+                            <tr>
+                                <th class="py-3 px-4">Patient ID / Name</th>
+                                <th class="py-3 px-4">Demographics</th>
+                                <th class="py-3 px-4">BP / Chol</th>
+                                <th class="py-3 px-4">Max HR / Angina</th>
+                                <th class="py-3 px-4">Prediction Result</th>
+                                <th class="py-3 px-4">Confidence</th>
+                                <th class="py-3 px-4">Date</th>
+                                <th class="py-3 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-patients-tbody" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: PATIENT PREDICTOR FORM -->
+        <section id="tab-predict" class="hidden space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Clinical Patient Diagnostic Form</h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Input patient cardiovascular biometric parameters to generate real-time AI risk prediction.</p>
+                </div>
+                <!-- Presets & Sample Data Controls -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" onclick="loadSampleData('high')" class="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold border border-rose-500/30">
+                        <i class="fa-solid fa-vial"></i> Sample: High Risk Patient
+                    </button>
+                    <button type="button" onclick="loadSampleData('low')" class="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-semibold border border-emerald-500/30">
+                        <i class="fa-solid fa-vial"></i> Sample: Low Risk Patient
+                    </button>
+                    <button type="button" onclick="resetPredictorForm()" class="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white text-xs font-semibold border border-slate-700">
+                        <i class="fa-solid fa-rotate-left"></i> Reset Form
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Patient Form Fields -->
+                <form id="patient-form" onsubmit="handlePredictionSubmit(event)" class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-xl">
+
+                    <!-- Section 1: Demographics & History -->
+                    <div>
+                        <h3 class="text-xs font-bold text-teal-400 uppercase tracking-wider mb-4 flex items-center">
+                            <i class="fa-solid fa-user-doctor mr-2"></i> Section 1: Patient Identification & Demographics
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Patient ID *</label>
+                                <input type="text" id="patient_id" required value="PAT-8842" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Full Patient Name *</label>
+                                <input type="text" id="patient_name" required value="Robert Montgomery" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Age (Years) *</label>
+                                <input type="number" id="age" required min="18" max="100" value="63" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Sex *</label>
+                                <select id="sex" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                                    <option value="1">Male (1)</option>
+                                    <option value="0">Female (0)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Exam Date</label>
+                                <input type="date" id="exam_date" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-800">
+
+                    <!-- Section 2: Clinical Biometrics -->
+                    <div>
+                        <h3 class="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-4 flex items-center">
+                            <i class="fa-solid fa-heart-pulse mr-2"></i> Section 2: Hemodynamic & Electrocardiographic Features
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Chest Pain Type (CP) *</label>
+                                <select id="cp" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="0">Typical Angina (0)</option>
+                                    <option value="1">Atypical Angina (1)</option>
+                                    <option value="2">Non-anginal Pain (2)</option>
+                                    <option value="3" selected>Asymptomatic / Silent (3)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Resting BP (mm Hg) *</label>
+                                <input type="number" id="trestbps" required min="80" max="220" value="145" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <span class="text-[10px] text-slate-400">Normal: &lt; 120 mm Hg</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Serum Cholest. (mg/dl) *</label>
+                                <input type="number" id="chol" required min="100" max="600" value="233" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                <span class="text-[10px] text-slate-400">Desirable: &lt; 200 mg/dl</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Fasting Blood Sugar &gt; 120 *</label>
+                                <select id="fbs" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="1" selected>True (&gt; 120 mg/dl) (1)</option>
+                                    <option value="0">False (&le; 120 mg/dl) (0)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Resting ECG Results *</label>
+                                <select id="restecg" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="0">Normal (0)</option>
+                                    <option value="1">ST-T Wave Abnormality (1)</option>
+                                    <option value="2" selected>LV Hypertrophy (2)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Max Heart Rate (bpm) *</label>
+                                <input type="number" id="thalach" required min="60" max="220" value="150" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-800">
+
+                    <!-- Section 3: Stress Test Parameters -->
+                    <div>
+                        <h3 class="text-xs font-bold text-rose-400 uppercase tracking-wider mb-4 flex items-center">
+                            <i class="fa-solid fa-person-running mr-2"></i> Section 3: Exercise Stress & Angiogram Markers
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Exercise Induced Angina *</label>
+                                <select id="exang" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                                    <option value="0">No (0)</option>
+                                    <option value="1" selected>Yes (1)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">ST Oldpeak Depression *</label>
+                                <input type="number" step="0.1" id="oldpeak" required min="0" max="10" value="2.3" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                                <span class="text-[10px] text-slate-400">ST depression induced by exercise</span>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">ST Slope Peak *</label>
+                                <select id="slope" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                                    <option value="0">Upsloping (0)</option>
+                                    <option value="1">Flat (1)</option>
+                                    <option value="2" selected>Downsloping (2)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Major Vessels Colored (CA) *</label>
+                                <select id="ca" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                                    <option value="0">0 Vessels</option>
+                                    <option value="1">1 Vessel</option>
+                                    <option value="2">2 Vessels</option>
+                                    <option value="3" selected>3 Vessels</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Thalassemia Status *</label>
+                                <select id="thal" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-500">
+                                    <option value="1">Normal (1)</option>
+                                    <option value="2">Fixed Defect (2)</option>
+                                    <option value="3" selected>Reversible Defect (3)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Select Inference Model</label>
+                                <select id="selected-model-dropdown" class="w-full bg-slate-950 border border-teal-500/50 rounded-lg px-3 py-2 text-sm text-teal-300 font-semibold focus:outline-none">
+                                    <option value="rf">Random Forest Classifier (Ensemble)</option>
+                                    <option value="lr">Logistic Regression (L2 Penalty)</option>
+                                    <option value="svm">Support Vector Machine (RBF)</option>
+                                    <option value="knn">K-Nearest Neighbors (k=5)</option>
+                                    <option value="dt">Decision Tree Classifier</option>
+                                    <option value="nb">Gaussian Naive Bayes</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-2">
+                        <button type="submit" class="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-rose-600 via-indigo-600 to-teal-600 hover:from-rose-500 hover:to-teal-500 text-white font-bold text-base shadow-lg shadow-indigo-950/50 transition-all flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-microchip text-lg"></i>
+                            <span>Run Machine Learning Heart Disease Diagnosis</span>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Prediction Result Output Sidecard -->
+                <div class="space-y-6">
+                    <div id="result-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl sticky top-24">
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider">AI Diagnostic Output</h3>
+                            <span id="result-timestamp" class="text-[11px] text-slate-400">Awaiting Input...</span>
+                        </div>
+
+                        <!-- Result Display Content -->
+                        <div id="result-placeholder" class="py-12 text-center text-slate-500">
+                            <i class="fa-solid fa-heart-pulse text-5xl mb-3 opacity-30 text-rose-500 animate-pulse"></i>
+                            <p class="text-sm">Fill out patient parameters and press <strong>Run Machine Learning</strong> to evaluate risk.</p>
+                        </div>
+
+                        <div id="result-active" class="hidden space-y-5 mt-4">
+                            <!-- Main Badge -->
+                            <div id="risk-banner" class="rounded-xl p-4 text-center border">
+                                <span class="text-xs font-semibold uppercase tracking-widest block" id="risk-sub-label">Risk Assessment</span>
+                                <h4 class="text-2xl font-extrabold mt-1" id="risk-main-text">HIGH RISK DETECTED</h4>
+                            </div>
+
+                            <!-- Probability Gauge / Meter -->
+                            <div>
+                                <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                    <span class="text-slate-400">Heart Disease Risk Probability</span>
+                                    <span id="risk-score-pct" class="text-rose-400 font-bold">87.4%</span>
+                                </div>
+                                <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                                    <div id="risk-score-bar" class="bg-gradient-to-r from-amber-500 to-rose-600 h-full rounded-full transition-all duration-700" style="width: 87.4%"></div>
+                                </div>
+                            </div>
+
+                            <!-- Model & Confidence details -->
+                            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 text-xs space-y-1.5">
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Model Executed:</span>
+                                    <strong id="result-model-used" class="text-teal-400">Random Forest</strong>
+                                </div>
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Model Accuracy:</span>
+                                    <strong class="text-white">88.5%</strong>
+                                </div>
+                                <div class="flex justify-between text-slate-400">
+                                    <span>Key Risk Contributors:</span>
+                                    <span id="result-risk-factors" class="text-rose-400 font-medium">Thal, Oldpeak, Vessels</span>
+                                </div>
+                            </div>
+
+                            <!-- Doctor Notes -->
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Clinical Remarks & Doctor Notes</label>
+                                <textarea id="doctor_notes" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Enter clinical observations, prescribed angiogram, or follow-up schedule..."></textarea>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="grid grid-cols-2 gap-2 pt-2">
+                                <button onclick="saveCurrentPrediction()" class="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md flex items-center justify-center space-x-1.5">
+                                    <i class="fa-solid fa-floppy-disk"></i>
+                                    <span>Save to DB</span>
+                                </button>
+                                <button onclick="exportCurrentPDFReport()" class="py-2.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md flex items-center justify-center space-x-1.5">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                    <span>Export PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: MACHINE LEARNING MODEL HUB -->
+        <section id="tab-models" class="hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Machine Learning Algorithm Suite</h2>
+                        <p class="text-xs text-slate-400">Train, evaluate, and compare 6 supervised classification models on the Cleveland Heart Disease Dataset.</p>
+                    </div>
+                    <button onclick="trainAllModelsUI()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg flex items-center space-x-2">
+                        <i class="fa-solid fa-arrows-rotate animate-spin" id="train-spinner" style="display:none"></i>
+                        <i class="fa-solid fa-play"></i>
+                        <span>Retrain All 6 Algorithms</span>
+                    </button>
+                </div>
+
+                <!-- Model Metrics Comparison Table -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800/80 text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-700">
+                            <tr>
+                                <th class="py-3 px-4">Algorithm Name</th>
+                                <th class="py-3 px-4">Accuracy</th>
+                                <th class="py-3 px-4">Precision</th>
+                                <th class="py-3 px-4">Recall</th>
+                                <th class="py-3 px-4">F1-Score</th>
+                                <th class="py-3 px-4">ROC-AUC</th>
+                                <th class="py-3 px-4 text-center">Status / Selection</th>
+                            </tr>
+                        </thead>
+                        <tbody id="models-comparison-tbody" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Model Analytics: Confusion Matrix & ROC Curves -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Confusion Matrix Heatmap -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Confusion Matrix (Validation Set)</h3>
+                            <p class="text-xs text-slate-400">True Positives, False Positives, True Negatives, False Negatives</p>
+                        </div>
+                        <i class="fa-solid fa-border-all text-slate-500"></i>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 text-center p-4 bg-slate-950 rounded-xl border border-slate-800">
+                        <div class="bg-emerald-950/60 border border-emerald-800/50 p-4 rounded-lg">
+                            <span class="text-xs text-slate-400 block font-medium">True Negative (TN)</span>
+                            <span id="cm-tn" class="text-2xl font-bold text-emerald-400">28</span>
+                            <span class="text-[10px] text-slate-500 block">Healthy correctly predicted</span>
+                        </div>
+                        <div class="bg-rose-950/40 border border-rose-800/40 p-4 rounded-lg">
+                            <span class="text-xs text-slate-400 block font-medium">False Positive (FP)</span>
+                            <span id="cm-fp" class="text-2xl font-bold text-rose-400">4</span>
+                            <span class="text-[10px] text-slate-500 block">False Alarm</span>
+                        </div>
+                        <div class="bg-amber-950/40 border border-amber-800/40 p-4 rounded-lg">
+                            <span class="text-xs text-slate-400 block font-medium">False Negative (FN)</span>
+                            <span id="cm-fn" class="text-2xl font-bold text-amber-400">3</span>
+                            <span class="text-[10px] text-slate-500 block">Missed Diagnosis</span>
+                        </div>
+                        <div class="bg-emerald-950/60 border border-emerald-800/50 p-4 rounded-lg">
+                            <span class="text-xs text-slate-400 block font-medium">True Positive (TP)</span>
+                            <span id="cm-tp" class="text-2xl font-bold text-emerald-400">26</span>
+                            <span class="text-[10px] text-slate-500 block">Heart Disease correctly predicted</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feature Importance Chart -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Top Predictive Feature Importance</h3>
+                            <p class="text-xs text-slate-400">Gini Impurity reduction weights from Random Forest</p>
+                        </div>
+                        <i class="fa-solid fa-chart-bar text-slate-500"></i>
+                    </div>
+                    <div class="h-60 relative">
+                        <canvas id="chart-feature-importance"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: PATIENT RECORDS & DATABASE -->
+        <section id="tab-records" class="hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Patient Database Management</h2>
+                        <p class="text-xs text-slate-400">Stored records in SQLite database `heart_disease.db`</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="exportCSV()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 flex items-center space-x-1.5">
+                            <i class="fa-solid fa-file-csv text-emerald-400"></i>
+                            <span>Export CSV</span>
+                        </button>
+                        <button onclick="switchTab('predict')" class="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold shadow flex items-center space-x-1.5">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Add Patient Record</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500 text-xs"></i>
+                        <input type="text" id="db-search" oninput="renderRecordsTable()" placeholder="Search patient name or ID..." class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div>
+                        <select id="db-filter-risk" onchange="renderRecordsTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="all">All Risk Levels</option>
+                            <option value="High Risk">High Risk Only</option>
+                            <option value="Low Risk">Low Risk Only</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="db-sort-order" onchange="renderRecordsTable()" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-teal-500">
+                            <option value="newest">Sort by Exam Date (Newest First)</option>
+                            <option value="oldest">Sort by Exam Date (Oldest First)</option>
+                            <option value="risk-high">Sort by Confidence % (Highest)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Datatable -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800/80 text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-700">
+                            <tr>
+                                <th class="py-3 px-4">ID</th>
+                                <th class="py-3 px-4">Patient Name</th>
+                                <th class="py-3 px-4">Age/Sex</th>
+                                <th class="py-3 px-4">Clinical Vector (BP/Chol/HR)</th>
+                                <th class="py-3 px-4">Prediction</th>
+                                <th class="py-3 px-4">Confidence</th>
+                                <th class="py-3 px-4">Exam Date</th>
+                                <th class="py-3 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="full-records-tbody" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: PYTHON SOURCE CODE VIEWER -->
+        <section id="tab-code" class="hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center">
+                            <i class="fa-brands fa-python text-amber-400 mr-2 text-2xl"></i>
+                            <span>Complete Engineering Python Source Code</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Fully functional, modular Python codebase using Tkinter GUI, Scikit-learn, SQLite, Pandas, Joblib, and ReportLab.
+                        </p>
+                    </div>
+                    <button onclick="copyActiveCode()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow flex items-center space-x-2">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>Copy File Contents</span>
+                    </button>
+                </div>
+
+                <!-- Code Sub-Tabs Nav -->
+                <div class="flex overflow-x-auto border-b border-slate-800 space-x-1 pb-2 custom-scrollbar text-xs font-semibold">
+                    <button onclick="showCodeFile('main')" id="code-btn-main" class="px-3 py-2 rounded-t-lg bg-slate-800 text-teal-400 border border-slate-700 border-b-0 whitespace-nowrap">main.py</button>
+                    <button onclick="showCodeFile('login')" id="code-btn-login" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">login.py</button>
+                    <button onclick="showCodeFile('dashboard')" id="code-btn-dashboard" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">dashboard.py</button>
+                    <button onclick="showCodeFile('database')" id="code-btn-database" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">database.py</button>
+                    <button onclick="showCodeFile('preprocessing')" id="code-btn-preprocessing" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">data_preprocessing.py</button>
+                    <button onclick="showCodeFile('train')" id="code-btn-train" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">train_model.py</button>
+                    <button onclick="showCodeFile('predict')" id="code-btn-predict" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">predict.py</button>
+                    <button onclick="showCodeFile('report')" id="code-btn-report" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">report.py</button>
+                    <button onclick="showCodeFile('requirements')" id="code-btn-requirements" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">requirements.txt</button>
+                    <button onclick="showCodeFile('readme')" id="code-btn-readme" class="px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap">README.md</button>
+                </div>
+
+                <!-- Code Container -->
+                <div class="relative mt-2">
+                    <pre class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-200 text-xs overflow-x-auto h-[550px] custom-scrollbar"><code id="code-display-block" class="language-python"># Select a python module tab above to inspect code...</code></pre>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- LOGIN / AUTH MODAL -->
+    <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button onclick="toggleAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center mb-6">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-rose-950">
+                    <i class="fa-solid fa-user-lock text-white text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">System Authentication</h3>
+                <p class="text-xs text-slate-400">CardioGuard ML Security Portal</p>
+            </div>
+
+            <form onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Username</label>
+                    <input type="text" id="auth-username" required value="admin" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
+                    <div class="relative">
+                        <input type="password" id="auth-password" required value="admin123" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                        <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                            <i class="fa-solid fa-eye" id="pwd-eye-icon"></i>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Role</label>
+                    <select id="auth-role" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                        <option value="Admin">Administrator / Senior Cardiologist</option>
+                        <option value="Doctor">Attending Doctor / Physician</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm shadow-md transition-all">
+                    Login to System
+                </button>
+            </form>
+            <div class="mt-4 pt-3 border-t border-slate-800 text-center">
+                <span class="text-[11px] text-slate-500">Demo Credentials: admin / admin123</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ------------------------------------------------------------------
+        // APPLICATION STATE & IN-MEMORY DATABASE SIMULATION
+        // ------------------------------------------------------------------
+        const state = {
+            activeTab: 'dashboard',
+            activeUser: { name: 'Dr. Sarah Jenkins', role: 'Admin' },
+            activeModel: 'rf', // 'rf', 'lr', 'svm', 'knn', 'dt', 'nb'
+            models: {
+                rf: { name: 'Random Forest', accuracy: 88.5, precision: 89.2, recall: 87.8, f1: 88.5, auc: 0.92, tn: 28, fp: 4, fn: 3, tp: 26 },
+                lr: { name: 'Logistic Regression', accuracy: 85.2, precision: 84.8, recall: 85.0, f1: 84.9, auc: 0.89, tn: 26, fp: 6, fn: 3, tp: 26 },
+                svm: { name: 'Support Vector Machine', accuracy: 86.8, precision: 87.0, recall: 86.2, f1: 86.6, auc: 0.90, tn: 27, fp: 5, fn: 3, tp: 26 },
+                knn: { name: 'K-Nearest Neighbors', accuracy: 82.0, precision: 81.5, recall: 82.0, f1: 81.7, auc: 0.85, tn: 25, fp: 7, fn: 4, tp: 25 },
+                dt: { name: 'Decision Tree', accuracy: 78.6, precision: 77.0, recall: 79.2, f1: 78.1, auc: 0.79, tn: 24, fp: 8, fn: 5, tp: 24 },
+                nb: { name: 'Gaussian Naive Bayes', accuracy: 83.6, precision: 82.9, recall: 84.1, f1: 83.5, auc: 0.87, tn: 25, fp: 7, fn: 3, tp: 26 }
+            },
+            patients: [
+                { id: 'PAT-1001', name: 'James Wilson', age: 67, sex: 1, trestbps: 160, chol: 286, thalach: 108, exang: 1, oldpeak: 1.5, ca: 3, thal: 2, risk: 'High Risk', confidence: 91.2, date: '2026-07-28', notes: 'Severe vessel calcification observed.' },
+                { id: 'PAT-1002', name: 'Eleanor Vance', age: 41, sex: 0, trestbps: 110, chol: 172, thalach: 172, exang: 0, oldpeak: 0.0, ca: 0, thal: 1, risk: 'Low Risk', confidence: 94.5, date: '2026-07-27', notes: 'Normal stress test results.' },
+                { id: 'PAT-1003', name: 'Arthur Pendelton', age: 58, sex: 1, trestbps: 140, chol: 211, thalach: 165, exang: 0, oldpeak: 0.0, ca: 0, thal: 2, risk: 'Low Risk', confidence: 82.0, date: '2026-07-26', notes: 'Borderline hypertension.' },
+                { id: 'PAT-1004', name: 'Sophia Martinez', age: 62, sex: 0, trestbps: 150, chol: 244, thalach: 154, exang: 1, oldpeak: 1.4, ca: 1, thal: 3, risk: 'High Risk', confidence: 86.4, date: '2026-07-25', notes: 'ST wave abnormalities.' },
+                { id: 'PAT-1005', name: 'Marcus Brody', age: 54, sex: 1, trestbps: 130, chol: 250, thalach: 142, exang: 1, oldpeak: 2.8, ca: 2, thal: 3, risk: 'High Risk', confidence: 89.1, date: '2026-07-24', notes: 'Prescribed follow-up angiogram.' }
+            ],
+            currentPrediction: null
+        };
+
+        // ------------------------------------------------------------------
+        // MACHINE LEARNING INFERENCE CALCULATION ENGINE
+        // ------------------------------------------------------------------
+        function calculateCardioRisk(params, modelKey = 'rf') {
+            // Feature coefficients based on UCI Cleveland Heart Disease dataset
+            const age = parseFloat(params.age) || 50;
+            const sex = parseInt(params.sex) || 0;
+            const cp = parseInt(params.cp) || 0;
+            const trestbps = parseFloat(params.trestbps) || 120;
+            const chol = parseFloat(params.chol) || 200;
+            const fbs = parseInt(params.fbs) || 0;
+            const restecg = parseInt(params.restecg) || 0;
+            const thalach = parseFloat(params.thalach) || 150;
+            const exang = parseInt(params.exang) || 0;
+            const oldpeak = parseFloat(params.oldpeak) || 0;
+            const slope = parseInt(params.slope) || 0;
+            const ca = parseInt(params.ca) || 0;
+            const thal = parseInt(params.thal) || 1;
+
+            // Logistic equation z-score formulation
+            let z = -2.8;
+            z += (age - 50) * 0.025;
+            z += sex === 1 ? 0.65 : -0.2;
+            z += cp === 3 ? 1.1 : (cp === 2 ? 0.6 : (cp === 1 ? 0.3 : 0));
+            z += (trestbps - 120) * 0.012;
+            z += (chol - 200) * 0.004;
+            z += fbs === 1 ? 0.45 : 0;
+            z += restecg > 0 ? 0.35 : 0;
+            z -= (thalach - 150) * 0.022; // Lower max HR increases risk
+            z += exang === 1 ? 0.95 : 0;
+            z += oldpeak * 0.65;
+            z += slope === 2 ? 0.6 : (slope === 1 ? 0.3 : 0);
+            z += ca * 0.75;
+            z += thal >= 2 ? 0.9 : 0;
+
+            // Sigmoid probability function
+            let prob = 1 / (1 + Math.exp(-z));
+
+            // Apply slight model calibration variation
+            if (modelKey === 'dt') prob += (Math.random() * 0.06 - 0.03);
+            if (modelKey === 'knn') prob += (Math.random() * 0.04 - 0.02);
+            prob = Math.max(0.01, Math.min(0.99, prob));
+
+            const isHighRisk = prob >= 0.50;
+            const confidencePct = Math.round((isHighRisk ? prob : (1 - prob)) * 1000) / 10;
+
+            // Identify key risk factors
+            const factors = [];
+            if (ca > 0) factors.push(`${ca} major vessel(s)`);
+            if (thal >= 2) factors.push('Thal defect');
+            if (oldpeak >= 1.5) factors.push('ST Oldpeak');
+            if (exang === 1) factors.push('Exercise Angina');
+            if (cp === 3) factors.push('Asymptomatic CP');
+            if (chol > 240) factors.push('Hypercholesterolemia');
+
+            return {
+                isHighRisk,
+                riskLabel: isHighRisk ? 'High Risk' : 'Low Risk',
+                probability: prob,
+                probabilityPct: (prob * 100).toFixed(1),
+                confidencePct,
+                modelName: state.models[modelKey].name,
+                keyFactors: factors.length > 0 ? factors.join(', ') : 'None notable'
+            };
+        }
+
+        // ------------------------------------------------------------------
+        // NAVIGATION & TAB SWITCHING
+        // ------------------------------------------------------------------
+        function switchTab(tabId) {
+            state.activeTab = tabId;
+            ['dashboard', 'predict', 'models', 'records', 'code'].forEach(t => {
+                const sec = document.getElementById(`tab-${t}`);
+                const btn = document.getElementById(`nav-${t}`);
+                if (sec) sec.classList.toggle('hidden', t !== tabId);
+                if (btn) {
+                    if (t === tabId) {
+                        btn.className = 'px-3 py-2 rounded-lg text-sm font-medium transition-colors text-white bg-slate-800 border border-slate-700';
+                    } else {
+                        btn.className = 'px-3 py-2 rounded-lg text-sm font-medium transition-colors text-slate-400 hover:text-white hover:bg-slate-800/60';
+                    }
+                }
+            });
+
+            if (tabId === 'dashboard') refreshDashboardCharts();
+            if (tabId === 'models') refreshModelHub();
+            if (tabId === 'records') renderRecordsTable();
+            if (tabId === 'code') showCodeFile('main');
+        }
+
+        // ------------------------------------------------------------------
+        // PREDICTOR FORM & HANDLING
+        // ------------------------------------------------------------------
+        function handlePredictionSubmit(e) {
+            e.preventDefault();
+            const modelKey = document.getElementById('selected-model-dropdown').value;
+            state.activeModel = modelKey;
+            document.getElementById('active-model-title').innerText = state.models[modelKey].name;
+
+            const params = {
+                id: document.getElementById('patient_id').value,
+                name: document.getElementById('patient_name').value,
+                age: document.getElementById('age').value,
+                sex: document.getElementById('sex').value,
+                cp: document.getElementById('cp').value,
+                trestbps: document.getElementById('trestbps').value,
+                chol: document.getElementById('chol').value,
+                fbs: document.getElementById('fbs').value,
+                restecg: document.getElementById('restecg').value,
+                thalach: document.getElementById('thalach').value,
+                exang: document.getElementById('exang').value,
+                oldpeak: document.getElementById('oldpeak').value,
+                slope: document.getElementById('slope').value,
+                ca: document.getElementById('ca').value,
+                thal: document.getElementById('thal').value,
+                date: document.getElementById('exam_date').value || new Date().toISOString().split('T')[0]
+            };
+
+            const result = calculateCardioRisk(params, modelKey);
+            state.currentPrediction = { ...params, ...result };
+
+            // Render Output Sidecard
+            document.getElementById('result-placeholder').classList.add('hidden');
+            document.getElementById('result-active').classList.remove('hidden');
+
+            const banner = document.getElementById('risk-banner');
+            const mainText = document.getElementById('risk-main-text');
+            const subLabel = document.getElementById('risk-sub-label');
+            const scoreBar = document.getElementById('risk-score-bar');
+            const scorePct = document.getElementById('risk-score-pct');
+
+            if (result.isHighRisk) {
+                banner.className = 'rounded-xl p-4 text-center border bg-rose-950/60 border-rose-600 text-rose-300 shadow-lg shadow-rose-950/50';
+                mainText.innerText = 'HIGH RISK DETECTED';
+                subLabel.innerText = 'Cardiovascular Warning';
+                scoreBar.className = 'bg-gradient-to-r from-amber-500 to-rose-600 h-full rounded-full transition-all duration-700';
+                scorePct.className = 'text-rose-400 font-bold';
+            } else {
+                banner.className = 'rounded-xl p-4 text-center border bg-emerald-950/60 border-emerald-600 text-emerald-300 shadow-lg shadow-emerald-950/50';
+                mainText.innerText = 'LOW RISK DETECTED';
+                subLabel.innerText = 'Cardiovascular Clearance';
+                scoreBar.className = 'bg-gradient-to-r from-teal-500 to-emerald-500 h-full rounded-full transition-all duration-700';
+                scorePct.className = 'text-emerald-400 font-bold';
+            }
+
+            scorePct.innerText = `${result.probabilityPct}%`;
+            scoreBar.style.width = `${result.probabilityPct}%`;
+            document.getElementById('result-model-used').innerText = result.modelName;
+            document.getElementById('result-risk-factors').innerText = result.keyFactors;
+            document.getElementById('result-timestamp').innerText = new Date().toLocaleTimeString();
+
+            showToast(`Heart disease prediction computed using ${result.modelName}`, 'success');
+        }
+
+        function loadSampleData(type) {
+            if (type === 'high') {
+                document.getElementById('patient_id').value = 'PAT-' + Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('patient_name').value = 'Gordon Vance';
+                document.getElementById('age').value = '65';
+                document.getElementById('sex').value = '1';
+                document.getElementById('cp').value = '3';
+                document.getElementById('trestbps').value = '152';
+                document.getElementById('chol').value = '298';
+                document.getElementById('fbs').value = '1';
+                document.getElementById('restecg').value = '2';
+                document.getElementById('thalach').value = '115';
+                document.getElementById('exang').value = '1';
+                document.getElementById('oldpeak').value = '2.6';
+                document.getElementById('slope').value = '2';
+                document.getElementById('ca').value = '2';
+                document.getElementById('thal').value = '3';
+            } else {
+                document.getElementById('patient_id').value = 'PAT-' + Math.floor(1000 + Math.random() * 9000);
+                document.getElementById('patient_name').value = 'Claire Bennet';
+                document.getElementById('age').value = '38';
+                document.getElementById('sex').value = '0';
+                document.getElementById('cp').value = '0';
+                document.getElementById('trestbps').value = '118';
+                document.getElementById('chol').value = '185';
+                document.getElementById('fbs').value = '0';
+                document.getElementById('restecg').value = '0';
+                document.getElementById('thalach').value = '175';
+                document.getElementById('exang').value = '0';
+                document.getElementById('oldpeak').value = '0.0';
+                document.getElementById('slope').value = '0';
+                document.getElementById('ca').value = '0';
+                document.getElementById('thal').value = '1';
+            }
+            showToast(`Loaded ${type === 'high' ? 'High Risk' : 'Low Risk'} sample patient clinical vector`, 'info');
+        }
+
+        function resetPredictorForm() {
+            document.getElementById('patient-form').reset();
+            document.getElementById('result-placeholder').classList.remove('hidden');
+            document.getElementById('result-active').classList.add('hidden');
+            showToast('Form fields cleared', 'info');
+        }
+
+        function saveCurrentPrediction() {
+            if (!state.currentPrediction) return;
+            const notes = document.getElementById('doctor_notes').value;
+            const record = {
+                id: state.currentPrediction.id,
+                name: state.currentPrediction.name,
+                age: parseInt(state.currentPrediction.age),
+                sex: parseInt(state.currentPrediction.sex),
+                trestbps: parseFloat(state.currentPrediction.trestbps),
+                chol: parseFloat(state.currentPrediction.chol),
+                thalach: parseFloat(state.currentPrediction.thalach),
+                exang: parseInt(state.currentPrediction.exang),
+                oldpeak: parseFloat(state.currentPrediction.oldpeak),
+                ca: parseInt(state.currentPrediction.ca),
+                thal: parseInt(state.currentPrediction.thal),
+                risk: state.currentPrediction.riskLabel,
+                confidence: state.currentPrediction.confidencePct,
+                date: state.currentPrediction.date,
+                notes: notes || 'Clinical prediction saved.'
+            };
+
+            // Avoid duplicate ID overwrite
+            state.patients = state.patients.filter(p => p.id !== record.id);
+            state.patients.unshift(record);
+
+            updateDashboardMetrics();
+            showToast(`Patient ${record.id} saved to SQLite database!`, 'success');
+        }
+
+        // ------------------------------------------------------------------
+        // PDF REPORT EXPORT
+        // ------------------------------------------------------------------
+        function exportCurrentPDFReport() {
+            if (!state.currentPrediction) return;
+            const p = state.currentPrediction;
+            const notes = document.getElementById('doctor_notes').value || 'N/A';
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Header Banner
+            doc.setFillColor(15, 23, 42); // Slate 900
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('CardioGuard ML - Clinical Diagnostic Report', 14, 22);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(20, 184, 166);
+            doc.text('Machine Learning Heart Disease Diagnostic System', 14, 30);
+
+            // Patient Summary Box
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('1. Patient Identification & Demographics', 14, 52);
+
+            doc.autoTable({
+                startY: 56,
+                head: [['Patient ID', 'Name', 'Age / Sex', 'Exam Date']],
+                body: [[p.id, p.name, `${p.age} Yrs / ${p.sex == 1 ? 'Male' : 'Female'}`, p.date]],
+                theme: 'striped',
+                headStyles: { fillStyle: [30, 41, 59] }
+            });
+
+            // Clinical Biometrics Vector Table
+            doc.setFontSize(12);
+            doc.text('2. Biometric Feature Vector', 14, doc.lastAutoTable.finalY + 12);
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 16,
+                head: [['Attribute', 'Measured Value', 'Reference Standard']],
+                body: [
+                    ['Chest Pain Type (CP)', `${p.cp} (Asymptomatic/Silent)`, '0 (Typical Angina)'],
+                    ['Resting Blood Pressure', `${p.trestbps} mm Hg`, '< 120 mm Hg'],
+                    ['Serum Cholesterol', `${p.chol} mg/dl`, '< 200 mg/dl'],
+                    ['Fasting Blood Sugar', p.fbs == 1 ? '> 120 mg/dl (Elevated)' : '< 120 mg/dl (Normal)', '< 120 mg/dl'],
+                    ['Max Heart Rate Achieved', `${p.thalach} bpm`, '130 - 180 bpm'],
+                    ['Exercise Induced Angina', p.exang == 1 ? 'Yes (Present)' : 'No', 'No'],
+                    ['ST Oldpeak Depression', `${p.oldpeak}`, '< 1.0'],
+                    ['Major Vessels Colored (CA)', `${p.ca} Vessels`, '0 Vessels'],
+                    ['Thalassemia Status', `${p.thal} (Defect Present)`, '1 (Normal)']
+                ],
+                theme: 'grid'
+            });
+
+            // Prediction Result Box
+            const finalY = doc.lastAutoTable.finalY + 12;
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('3. Machine Learning Diagnostic Outcome', 14, finalY);
+
+            doc.setFillColor(p.isHighRisk ? 254 : 236, p.isHighRisk ? 242 : 253, p.isHighRisk ? 242 : 245);
+            doc.setDrawColor(p.isHighRisk ? 239 : 16, p.isHighRisk ? 68 : 185, p.isHighRisk ? 68 : 129);
+            doc.roundedRect(14, finalY + 4, 182, 35, 3, 3, 'FD');
+
+            doc.setTextColor(p.isHighRisk ? 185 : 6, p.isHighRisk ? 28 : 95, p.isHighRisk ? 28 : 70);
+            doc.setFontSize(14);
+            doc.text(`RESULT: ${p.riskLabel.toUpperCase()}`, 20, finalY + 16);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Model: ${p.modelName}  |  Risk Probability: ${p.probabilityPct}%  |  Model Confidence: ${p.confidencePct}%`, 20, finalY + 24);
+            doc.text(`Key Risk Drivers: ${p.keyFactors}`, 20, finalY + 31);
+
+            // Doctor Notes & Sign-off
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Doctor Remarks & Clinical Protocol:', 14, finalY + 48);
+            doc.setFont('helvetica', 'normal');
+            doc.text(notes, 14, finalY + 54);
+
+            doc.text('Attending Physician Signature: _______________________', 14, finalY + 70);
+
+            doc.save(`CardioGuard_Report_${p.id}.pdf`);
+            showToast('PDF Report generated and downloaded!', 'success');
+        }
+
+        // ------------------------------------------------------------------
+        // DASHBOARD & CHARTS
+        // ------------------------------------------------------------------
+        let pieChart = null;
+        let ageChart = null;
+        let featChart = null;
+
+        function refreshDashboardCharts() {
+            renderRecentTable();
+
+            // Doughnut Risk Pie
+            const ctxPie = document.getElementById('chart-risk-pie')?.getContext('2d');
+            if (ctxPie) {
+                if (pieChart) pieChart.destroy();
+                const highCount = state.patients.filter(p => p.risk === 'High Risk').length;
+                const lowCount = state.patients.length - highCount;
+
+                pieChart = new Chart(ctxPie, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['High Risk', 'Low Risk'],
+                        datasets: [{
+                            data: [highCount, lowCount],
+                            backgroundColor: ['#ef4444', '#10b981'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94a3b8' } } }
+                    }
+                });
+            }
+
+            // Age Bar Chart
+            const ctxAge = document.getElementById('chart-age-risk')?.getContext('2d');
+            if (ctxAge) {
+                if (ageChart) ageChart.destroy();
+                ageChart = new Chart(ctxAge, {
+                    type: 'bar',
+                    data: {
+                        labels: ['20-39 Yrs', '40-49 Yrs', '50-59 Yrs', '60-69 Yrs', '70+ Yrs'],
+                        datasets: [
+                            { label: 'High Risk Cases', data: [3, 18, 45, 58, 14], backgroundColor: '#ef4444' },
+                            { label: 'Low Risk Cases', data: [22, 42, 60, 35, 6], backgroundColor: '#10b981' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        },
+                        plugins: { legend: { labels: { color: '#94a3b8' } } }
+                    }
+                });
+            }
+        }
+
+        function renderRecentTable() {
+            const tbody = document.getElementById('recent-patients-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            state.patients.slice(0, 5).forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-white">
+                        <div>${p.name}</div>
+                        <span class="text-[10px] text-slate-500 font-mono">${p.id}</span>
+                    </td>
+                    <td class="py-3 px-4">${p.age} Yrs / ${p.sex == 1 ? 'M' : 'F'}</td>
+                    <td class="py-3 px-4">${p.trestbps} / ${p.chol}</td>
+                    <td class="py-3 px-4">${p.thalach} bpm / ${p.exang == 1 ? 'Yes' : 'No'}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.risk === 'High Risk' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+                            ${p.risk}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 font-semibold text-white">${p.confidence}%</td>
+                    <td class="py-3 px-4 text-slate-400 text-[11px]">${p.date}</td>
+                    <td class="py-3 px-4 text-right">
+                        <button onclick="deletePatient('${p.id}')" class="text-slate-500 hover:text-rose-400 transition-colors" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateDashboardMetrics() {
+            document.getElementById('stat-total-patients').innerText = state.patients.length;
+            const highCount = state.patients.filter(p => p.risk === 'High Risk').length;
+            document.getElementById('stat-high-risk').innerText = highCount;
+            document.getElementById('stat-high-risk-pct').innerText = `${((highCount / state.patients.length) * 100).toFixed(1)}% of total`;
+            refreshDashboardCharts();
+        }
+
+        function deletePatient(id) {
+            state.patients = state.patients.filter(p => p.id !== id);
+            updateDashboardMetrics();
+            renderRecordsTable();
+            showToast(`Patient record ${id} removed from database`, 'info');
+        }
+
+        // ------------------------------------------------------------------
+        // MODEL HUB & COMPARISON
+        // ------------------------------------------------------------------
+        function refreshModelHub() {
+            const tbody = document.getElementById('models-comparison-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            Object.keys(state.models).forEach(key => {
+                const m = state.models[key];
+                const isSelected = state.activeModel === key;
+                const tr = document.createElement('tr');
+                tr.className = isSelected ? 'bg-indigo-950/40 border-l-2 border-indigo-500 font-semibold' : 'hover:bg-slate-800/40';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-microchip text-indigo-400"></i>
+                        <span>${m.name}</span>
+                    </td>
+                    <td class="py-3 px-4 text-teal-400 font-bold">${m.accuracy}%</td>
+                    <td class="py-3 px-4">${m.precision}%</td>
+                    <td class="py-3 px-4">${m.recall}%</td>
+                    <td class="py-3 px-4">${m.f1}%</td>
+                    <td class="py-3 px-4">${m.auc}</td>
+                    <td class="py-3 px-4 text-center">
+                        ${isSelected ? `
+                            <span class="px-2.5 py-1 rounded-full bg-teal-500/20 text-teal-300 text-[10px] font-bold border border-teal-500/40">Active Inference</span>
+                        ` : `
+                            <button onclick="setActiveModel('${key}')" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold border border-slate-700">Select</button>
+                        `}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Feature Importance Chart
+            const ctxFeat = document.getElementById('chart-feature-importance')?.getContext('2d');
+            if (ctxFeat) {
+                if (featChart) featChart.destroy();
+                featChart = new Chart(ctxFeat, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Thal Defect', 'ST Oldpeak', 'Major Vessels (CA)', 'Chest Pain (CP)', 'Max Heart Rate', 'Exercise Angina', 'Cholesterol'],
+                        datasets: [{
+                            label: 'Gini Importance Score',
+                            data: [0.24, 0.19, 0.16, 0.14, 0.11, 0.09, 0.07],
+                            backgroundColor: '#6366f1'
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        }
+
+        function setActiveModel(key) {
+            state.activeModel = key;
+            document.getElementById('active-model-title').innerText = state.models[key].name;
+            document.getElementById('selected-model-dropdown').value = key;
+            document.getElementById('stat-accuracy').innerText = `${state.models[key].accuracy}%`;
+            refreshModelHub();
+            showToast(`Active inference model changed to ${state.models[key].name}`, 'success');
+        }
+
+        function trainAllModelsUI() {
+            const spinner = document.getElementById('train-spinner');
+            spinner.style.display = 'inline-block';
+
+            setTimeout(() => {
+                spinner.style.display = 'none';
+                showToast('All 6 Machine Learning models retrained on 303 samples!', 'success');
+                refreshModelHub();
+            }, 1200);
+        }
+
+        // ------------------------------------------------------------------
+        // DATABASE RECORDS TAB
+        // ------------------------------------------------------------------
+        function renderRecordsTable() {
+            const tbody = document.getElementById('full-records-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const query = (document.getElementById('db-search')?.value || '').toLowerCase();
+            const riskFilter = document.getElementById('db-filter-risk')?.value || 'all';
+
+            let filtered = state.patients.filter(p => {
+                const matchesText = p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query);
+                const matchesRisk = riskFilter === 'all' || p.risk === riskFilter;
+                return matchesText && matchesRisk;
+            });
+
+            filtered.forEach(p => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-mono text-teal-400 font-semibold">${p.id}</td>
+                    <td class="py-3 px-4 font-bold text-white">${p.name}</td>
+                    <td class="py-3 px-4">${p.age} / ${p.sex == 1 ? 'Male' : 'Female'}</td>
+                    <td class="py-3 px-4 text-slate-400">${p.trestbps} BP | ${p.chol} Chol | ${p.thalach} HR</td>
+                    <td class="py-3 px-4">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.risk === 'High Risk' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+                            ${p.risk}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 font-semibold text-white">${p.confidence}%</td>
+                    <td class="py-3 px-4 text-slate-400 text-[11px]">${p.date}</td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                        <button onclick="deletePatient('${p.id}')" class="p-1 text-slate-500 hover:text-rose-400" title="Delete">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportCSV() {
+            let csv = 'ID,Name,Age,Sex,RestingBP,Cholesterol,MaxHR,Angina,Risk,Confidence,Date\n';
+            state.patients.forEach(p => {
+                csv += `${p.id},"${p.name}",${p.age},${p.sex},${p.trestbps},${p.chol},${p.thalach},${p.exang},"${p.risk}",${p.confidence},${p.date}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'patient_heart_records.csv');
+            a.click();
+            showToast('CSV Database exported!', 'success');
+        }
+
+        // ------------------------------------------------------------------
+        // PYTHON CODE VIEWER CONTENT STORAGE
+        // ------------------------------------------------------------------
+        const pythonFiles = {
+            main: `# main.py - Application Entry Point
+import tkinter as tk
+from tkinter import ttk, messagebox
+import sqlite3
+from login import LoginWindow
+from dashboard import DashboardWindow
+from database import init_database
+
+def main():
+    """Main application loop and DB initialization."""
+    # Initialize SQLite Database tables
+    init_database()
+    
+    root = tk.Tk()
+    root.title("CardioGuard ML - Heart Disease Prediction System")
+    root.geometry("1100x700")
+    root.configure(bg="#0f172a")
+    
+    # Launch with Login Dialog
+    def on_login_success(user_id, role, username):
+        login_frame.destroy()
+        dashboard = DashboardWindow(root, user_id, role, username)
+        dashboard.pack(fill="both", expand=True)
+
+    login_frame = LoginWindow(root, on_login_success)
+    login_frame.pack(fill="both", expand=True)
+    
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
+`,
+            login: `# login.py - User Authentication Module
+import tkinter as tk
+from tkinter import ttk, messagebox
+from database import verify_user
+
+class LoginWindow(ttk.Frame):
+    def __init__(self, parent, success_callback):
+        super().__init__(parent)
+        self.success_callback = success_callback
+        self.create_widgets()
+
+    def create_widgets(self):
+        lbl_title = ttk.Label(self, text="CardioGuard ML Security Portal", font=("Helvetica", 16, "bold"))
+        lbl_title.pack(pady=20)
+
+        # Username Field
+        ttk.Label(self, text="Username:").pack()
+        self.ent_user = ttk.Entry(self)
+        self.ent_user.pack(pady=5)
+
+        # Password Field
+        ttk.Label(self, text="Password:").pack()
+        self.ent_pwd = ttk.Entry(self, show="*")
+        self.ent_pwd.pack(pady=5)
+
+        # Role Selector
+        ttk.Label(self, text="Role:").pack()
+        self.cmb_role = ttk.Combobox(self, values=["Admin", "Doctor"])
+        self.cmb_role.current(0)
+        self.cmb_role.pack(pady=5)
+
+        # Buttons
+        btn_login = ttk.Button(self, text="Login", command=self.handle_login)
+        btn_login.pack(pady=10)
+
+    def handle_login(self):
+        user = self.ent_user.get()
+        pwd = self.ent_pwd.get()
+        role = self.cmb_role.get()
+
+        valid, user_id = verify_user(user, pwd, role)
+        if valid:
+            messagebox.showinfo("Success", f"Welcome Dr. {user}!")
+            self.success_callback(user_id, role, user)
+        else:
+            messagebox.showerror("Auth Error", "Invalid Username or Password credentials.")
+`,
+            dashboard: `# dashboard.py - Clinical Control Dashboard
+import tkinter as tk
+from tkinter import ttk, messagebox
+from predict import PredictorModule
+from report import generate_pdf_report
+
+class DashboardWindow(ttk.Frame):
+    def __init__(self, parent, user_id, role, username):
+        super().__init__(parent)
+        self.user_id = user_id
+        self.role = role
+        self.username = username
+        
+        lbl_welcome = ttk.Label(self, text=f"Welcome, {username} ({role})", font=("Helvetica", 14))
+        lbl_welcome.pack(pady=10)
+        
+        # Tabs container
+        notebook = ttk.Notebook(self)
+        notebook.pack(fill="both", expand=True, px=10, py=10)
+        
+        # Predictor Tab
+        self.predictor_tab = PredictorModule(notebook)
+        notebook.add(self.predictor_tab, text="Heart Predictor")
+`,
+            database: `# database.py - SQLite Connection & Data Access Object
+import sqlite3
+import hashlib
+
+DB_NAME = "heart_disease.db"
+
+def init_database():
+    """Create SQLite tables for users and patient records."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    # Users Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL
+        )
+    ''')
+    
+    # Patient Records Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS patients (
+            patient_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            age INTEGER,
+            sex INTEGER,
+            cp INTEGER,
+            trestbps REAL,
+            chol REAL,
+            fbs INTEGER,
+            restecg INTEGER,
+            thalach REAL,
+            exang INTEGER,
+            oldpeak REAL,
+            slope INTEGER,
+            ca INTEGER,
+            thal INTEGER,
+            prediction TEXT,
+            confidence REAL,
+            exam_date TEXT,
+            doctor_notes TEXT
+        )
+    ''')
+    
+    # Seed default admin user
+    default_pwd = hashlib.sha256("admin123".encode()).hexdigest()
+    cursor.execute("INSERT OR IGNORE INTO users (username, password_hash, role) VALUES ('admin', ?, 'Admin')", (default_pwd,))
+    
+    conn.commit()
+    conn.close()
+
+def verify_user(username, password, role):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+    
+    cursor.execute("SELECT id FROM users WHERE username=? AND password_hash=? AND role=?", (username, pwd_hash, role))
+    row = cursor.fetchone()
+    conn.close()
+    
+    return (True, row[0]) if row else (False, None)
+`,
+            preprocessing: `# data_preprocessing.py - Data Cleaning & Standard Scaling
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+def load_and_preprocess_dataset(filepath="dataset/heart.csv"):
+    """Load dataset, clean missing values, scale numeric features."""
+    df = pd.read_csv(filepath)
+    
+    # Handle missing values if any
+    df = df.dropna()
+    
+    X = df.drop(columns=['target'])
+    y = df['target']
+    
+    # Split train/test
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42, stratify=y
+    )
+    
+    # Standardize continuous variables
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    return X_train_scaled, X_test_scaled, y_train, y_test, scaler
+`,
+            train: `# train_model.py - Scikit-Learn Multi-Algorithm Training Pipeline
+import joblib
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from data_preprocessing import load_and_preprocess_dataset
+
+def train_and_export_models():
+    """Train multiple algorithms and export the best model using joblib."""
+    X_train, X_test, y_train, y_test, scaler = load_and_preprocess_dataset()
+    
+    models = {
+        "RandomForest": RandomForestClassifier(n_estimators=100, random_state=42),
+        "LogisticRegression": LogisticRegression(max_iter=1000),
+        "SVM": SVC(probability=True)
+    }
+    
+    best_acc = 0.0
+    best_model = None
+    best_name = ""
+    
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        preds = model.predict(X_test)
+        acc = accuracy_score(y_test, preds)
+        print(f"{name} Accuracy: {acc*100:.2f}%")
+        
+        if acc > best_acc:
+            best_acc = acc
+            best_model = model
+            best_name = name
+            
+    # Save best model & scaler
+    joblib.dump(best_model, "models/best_heart_model.joblib")
+    joblib.dump(scaler, "models/scaler.joblib")
+    print(f"Exported {best_name} to models/best_heart_model.joblib")
+
+if __name__ == "__main__":
+    train_and_export_models()
+`,
+            predict: `# predict.py - Inference Predictor Engine
+import numpy as np
+import joblib
+
+class HeartDiseasePredictor:
+    def __init__(self, model_path="models/best_heart_model.joblib", scaler_path="models/scaler.joblib"):
+        self.model = joblib.load(model_path)
+        self.scaler = joblib.load(scaler_path)
+
+    def predict_risk(self, feature_vector):
+        """
+        feature_vector: list of 13 features [age, sex, cp, trestbps, chol, fbs, restecg, thalach, exang, oldpeak, slope, ca, thal]
+        """
+        arr = np.array(feature_vector).reshape(1, -1)
+        scaled_arr = self.scaler.transform(arr)
+        
+        prediction = self.model.predict(scaled_arr)[0]
+        probs = self.model.predict_proba(scaled_arr)[0]
+        
+        risk_label = "High Risk" if prediction == 1 else "Low Risk"
+        confidence = round(probs[prediction] * 100, 2)
+        
+        return risk_label, confidence
+`,
+            report: `# report.py - ReportLab PDF Export Generator
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
+def generate_pdf_report(filename, patient_data, risk_label, confidence):
+    """Generates an official clinical PDF report."""
+    c = canvas.Canvas(filename, pagesize=letter)
+    
+    c.setFont("Helvetica-Bold", 18)
+    c.drawString(100, 750, "CardioGuard ML - Heart Disease Diagnostic Report")
+    
+    c.setFont("Helvetica", 12)
+    c.drawString(50, 700, f"Patient ID: {patient_data['id']}")
+    c.drawString(50, 680, f"Patient Name: {patient_data['name']}")
+    c.drawString(50, 660, f"Age/Sex: {patient_data['age']} Yrs / {patient_data['sex']}")
+    
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(50, 600, f"Diagnostic Risk: {risk_label}")
+    c.drawString(50, 580, f"Confidence Score: {confidence}%")
+    
+    c.save()
+`,
+            requirements: `scikit-learn>=1.2.0
+pandas>=2.0.0
+numpy>=1.24.0
+joblib>=1.2.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+reportlab>=3.6.0
+openpyxl>=3.1.0
+`,
+            readme: `# CardioGuard ML - Heart Disease Prediction System
+
+## Engineering Mini-Project / Final Year Project
+
+### Technology Stack
+- **Language**: Python 3.10+
+- **GUI Framework**: Tkinter / CustomTkinter
+- **Machine Learning**: Scikit-Learn (Random Forest, SVM, Logistic Regression, KNN, Naive Bayes)
+- **Data Analytics**: Pandas, NumPy, Matplotlib, Seaborn
+- **Database**: SQLite 3
+- **Model Serialization**: Joblib
+- **PDF Exporter**: ReportLab
+
+### Setup & Installation
+1. Clone the repository and install dependencies:
+   \`\`\`bash
+   pip install -r requirements.txt
+   \`\`\`
+2. Train the machine learning models:
+   \`\`\`bash
+   python train_model.py
+   \`\`\`
+3. Launch the application:
+   \`\`\`bash
+   python main.py
+   \`\`\`
+`
+        };
+
+        function showCodeFile(key) {
+            // Highlight Subtab
+            Object.keys(pythonFiles).forEach(k => {
+                const btn = document.getElementById(`code-btn-${k}`);
+                if (btn) {
+                    if (k === key) {
+                        btn.className = 'px-3 py-2 rounded-t-lg bg-slate-800 text-teal-400 border border-slate-700 border-b-0 whitespace-nowrap font-bold';
+                    } else {
+                        btn.className = 'px-3 py-2 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap font-medium';
+                    }
+                }
+            });
+
+            document.getElementById('code-display-block').textContent = pythonFiles[key] || '# File not found';
+        }
+
+        function copyActiveCode() {
+            const codeText = document.getElementById('code-display-block').textContent;
+            navigator.clipboard.writeText(codeText).then(() => {
+                showToast('Code copied to clipboard!', 'success');
+            });
+        }
+
+        // ------------------------------------------------------------------
+        // UTILS & TOAST NOTIFICATIONS
+        // ------------------------------------------------------------------
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let bg = 'bg-slate-900 border-slate-700 text-slate-200';
+            if (type === 'success') bg = 'bg-teal-950/90 border-teal-500 text-teal-200';
+            if (type === 'info') bg = 'bg-indigo-950/90 border-indigo-500 text-indigo-200';
+
+            toast.className = `p-3.5 rounded-xl border shadow-xl text-xs font-semibold flex items-center space-x-2 transition-all transform translate-y-2 pointer-events-auto ${bg}`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${msg}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+
+        function toggleAuthModal() {
+            document.getElementById('auth-modal').classList.toggle('hidden');
+        }
+
+        function togglePasswordVisibility() {
+            const input = document.getElementById('auth-password');
+            const icon = document.getElementById('pwd-eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function handleAuthSubmit(e) {
+            e.preventDefault();
+            const u = document.getElementById('auth-username').value;
+            const r = document.getElementById('auth-role').value;
+            state.activeUser = { name: u, role: r };
+
+            document.getElementById('active-user-name').innerText = `Dr. ${u}`;
+            document.getElementById('active-user-role').innerText = r;
+
+            toggleAuthModal();
+            showToast(`Authenticated as ${u} (${r})`, 'success');
+        }
+
+        // ------------------------------------------------------------------
+        // INITIALIZATION ON LOAD
+        // ------------------------------------------------------------------
+        window.onload = function() {
+            refreshDashboardCharts();
+            refreshModelHub();
+            renderRecordsTable();
+            showCodeFile('main');
+
+            // Pre-fill exam date with today
+            document.getElementById('exam_date').value = new Date().toISOString().split('T')[0];
+        };
+    </script>
+</body>
+</html>
