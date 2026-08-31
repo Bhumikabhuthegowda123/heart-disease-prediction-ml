@@ -16,26 +16,30 @@ class HeartDiseasePredictor:
         self.scaler = joblib.load(scaler_path)
 
     def predict_risk(self, feature_vector):
-        """
-        Predict heart disease risk using 13 input features.
-        """
+        """Predict heart disease risk using 13 input features."""
 
         arr = np.array(feature_vector, dtype=float).reshape(1, -1)
+
+        if arr.shape[1] != 13:
+            raise ValueError("Exactly 13 features are required.")
+
         scaled_arr = self.scaler.transform(arr)
 
         prediction = self.model.predict(scaled_arr)[0]
-        probabilities = self.model.predict_proba(scaled_arr)[0]
 
-        risk_label = "High Risk" if prediction == 1 else "Low Risk"
-        confidence = round(probabilities[int(prediction)] * 100, 2)
+        if hasattr(self.model, "predict_proba"):
+            probabilities = self.model.predict_proba(scaled_arr)[0]
+            confidence = float(max(probabilities) * 100)
+        else:
+            confidence = 100.0
 
-        return risk_label, confidence
+        risk_label = "High Risk" if int(prediction) == 1 else "Low Risk"
+
+        return risk_label, round(confidence, 2)
 
 
 class PredictorModule(ttk.Frame):
-    """
-    GUI module used by dashboard.py.
-    """
+    """GUI module used by dashboard.py."""
 
     def __init__(self, parent):
         super().__init__(parent)
@@ -76,7 +80,10 @@ class PredictorModule(ttk.Frame):
         form.pack(pady=10)
 
         for i, name in enumerate(feature_names):
-            ttk.Label(form, text=name + ":").grid(
+            ttk.Label(
+                form,
+                text=name + ":"
+            ).grid(
                 row=i,
                 column=0,
                 padx=10,
