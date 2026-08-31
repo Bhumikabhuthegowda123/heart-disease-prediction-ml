@@ -66,4 +66,4 @@ def verify_user(username, password, role):
     row = cursor.fetchone()
     conn.close()
     
-    return (True, row[0)] if row else (False,None)
+    return (True, row[0]) if row else (False,None)
