@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-def load_and_preprocess_dataset(filepath="data/heart.csv"):
+def load_and_preprocess_dataset(filepath="heart.csv"):
     df = pd.read_csv(filepath)
 
     X = df.drop("target", axis=1)
